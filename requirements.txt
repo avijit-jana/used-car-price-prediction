@@ -8,3 +8,5 @@ streamlit
 openpyxl
 jupyter
 ipykernel
+requests
+huggingface_hub

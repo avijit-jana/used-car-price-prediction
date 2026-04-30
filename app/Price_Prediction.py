@@ -1,91 +1,145 @@
+import os
 import pickle
+from huggingface_hub import hf_hub_download
 import numpy as np
 import pandas as pd
+import requests
+from io import BytesIO
 import streamlit as st
-from sklearn.preprocessing import LabelEncoder
 
-# ── Local file paths ──────────────────────────────────────────────────────────
-CAR_DATA_PATH      = 'Utility Files/car_data.xlsx'
-MODEL_PATH         = 'Utility Files/model.pkl'
-LABEL_ENCODER_PATH = 'Utility Files/label_encoder.pkl'
-SCALER_PATH        = 'Utility Files/scaler.pkl'
-CAR_IMAGE_PATH     = 'app/car.png'
+# ─────────────────────────────────────────────────────────────
+# Environment-based Paths (Deployment Friendly)
+# ─────────────────────────────────────────────────────────────
+CAR_DATA_PATH = os.getenv("CAR_DATA_PATH", "Utility Files/car_data.xlsx")
+MODEL_PATH = os.getenv("MODEL_PATH", "Utility Files/model.pkl")
+LABEL_ENCODER_PATH = os.getenv("ENCODER_PATH", "Utility Files/label_encoder.pkl")
+SCALER_PATH = os.getenv("SCALER_PATH", "Utility Files/scaler.pkl")
 
-# ── Page config ───────────────────────────────────────────────────────────────
+CAR_IMAGE_PATH = "app/car.png"
+
+# ─────────────────────────────────────────────────────────────
+# Streamlit Config
+# ─────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title = 'CarDekho Price Predictor',
-    page_icon  = '🚗',
-    layout     = 'wide',
+    page_title="CarDekho Price Predictor",
+    page_icon="🚗",
+    layout="wide",
 )
 
-# ── Resource loading (cached) ─────────────────────────────────────────────────
-@st.cache_data(show_spinner='Loading dataset …')
-def load_car_data() -> pd.DataFrame:
-    return pd.read_excel(CAR_DATA_PATH)
+# ─────────────────────────────────────────────────────────────
+# Load Resources
+# ─────────────────────────────────────────────────────────────
+@st.cache_data(show_spinner="Loading dataset...")
+def load_car_data():
+    if os.path.exists(CAR_DATA_PATH):
+        return pd.read_excel(CAR_DATA_PATH)
 
-@st.cache_resource(show_spinner='Loading model …')
+    else:
+        path = hf_hub_download(
+            repo_id=st.secrets["huggingface"]["repo_id"],
+            filename="car_data.xlsx",
+            token=st.secrets["huggingface"]["hf_token"]
+        )
+        return pd.read_excel(path)
+
+@st.cache_resource(show_spinner="Loading model...")
 def load_model():
-    with open(MODEL_PATH, 'rb') as f:
-        return pickle.load(f)
+    if os.path.exists(MODEL_PATH):
+        with open(MODEL_PATH, "rb") as f:
+            return pickle.load(f)
 
-@st.cache_resource(show_spinner='Loading preprocessors …')
+    else:
+        path = hf_hub_download(
+            repo_id=st.secrets["huggingface"]["repo_id"],
+            filename="model.pkl",
+            token=st.secrets["huggingface"]["hf_token"]
+        )
+        return pickle.load(open(path, "rb"))
+
+@st.cache_resource(show_spinner="Loading preprocessors...")
 def load_preprocessors():
-    with open(LABEL_ENCODER_PATH, 'rb') as f:
-        label_encoder = pickle.load(f)
-    with open(SCALER_PATH, 'rb') as f:
-        scaler = pickle.load(f)
-    return label_encoder, scaler
+    if os.path.exists(LABEL_ENCODER_PATH) and os.path.exists(SCALER_PATH):
+        with open(LABEL_ENCODER_PATH, "rb") as f:
+            le = pickle.load(f)
+        with open(SCALER_PATH, "rb") as f:
+            sc = pickle.load(f)
+        return le, sc
+    else:
+        le_path = hf_hub_download(
+            repo_id=st.secrets["huggingface"]["repo_id"],
+            filename="label_encoder.pkl",
+            token=st.secrets["huggingface"]["hf_token"]
+        )
+        sc_path = hf_hub_download(
+            repo_id=st.secrets["huggingface"]["repo_id"],
+            filename="scaler.pkl",
+            token=st.secrets["huggingface"]["hf_token"]
+        )
+        le = pickle.load(open(le_path, "rb"))
+        sc = pickle.load(open(sc_path, "rb"))
+        return le, sc
 
-# ── Prediction helper ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# Model Configuration
+# ─────────────────────────────────────────────────────────────
 CATEGORICAL_COLS = [
-    'Fuel type', 'Body type', 'transmission',
-    'model', 'variantName', 'Insurance Validity', 'City',
+    "Fuel type", "Body type", "transmission",
+    "model", "variantName", "Insurance Validity", "City",
 ]
 
-# Must match the column order used during model training
 FEATURE_ORDER = [
-    'Fuel type', 'Body type', 'Kilometers driven', 'transmission',
-    'ownerNo', 'model', 'modelYear', 'variantName',
-    'Registration Year', 'Insurance Validity',
-    'Mileage(kmpl)', 'Engine(CC)', 'Max Power(bhp)', 'Torque(Nm)', 'City',
+    "Fuel type", "Body type", "Kilometers driven", "transmission",
+    "ownerNo", "model", "modelYear", "variantName",
+    "Registration Year", "Insurance Validity",
+    "Mileage(kmpl)", "Engine(CC)", "Max Power(bhp)", "Torque(Nm)", "City",
 ]
 
-def predict_price(features: dict, car_data: pd.DataFrame) -> float:
+
+# ─────────────────────────────────────────────────────────────
+# Prediction Logic
+# ─────────────────────────────────────────────────────────────
+def predict_price(features, car_data):
     model = load_model()
     label_encoder, scaler = load_preprocessors()
 
-    features_df = pd.DataFrame([features])[FEATURE_ORDER]
+    # Validate schema
+    if set(FEATURE_ORDER) != set(features.keys()):
+        raise ValueError("Feature mismatch detected")
 
-    # Encode each categorical column using the distribution from car_data
+    df = pd.DataFrame([features])[FEATURE_ORDER]
+
+    # Encode categorical features safely
     for col in CATEGORICAL_COLS:
-        label_encoder.fit(car_data[col].astype(str))
-        features_df[col] = label_encoder.transform(features_df[col].astype(str))
+        try:
+            df[col] = label_encoder.transform(df[col].astype(str))
+        except Exception:
+            df[col] = -1  # fallback for unseen values
 
-    features_scaled = scaler.transform(features_df)
-    return model.predict(features_scaled)[0]
+    df_scaled = scaler.transform(df)
+    return model.predict(df_scaled)[0]
 
-# ── UI ────────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# Main App
+# ─────────────────────────────────────────────────────────────
 def main():
     try:
         df = load_car_data()
-    except FileNotFoundError:
-        st.error(f'❌ Data file not found: `{CAR_DATA_PATH}`. Make sure it is in the same directory as this script.')
-        st.stop()
     except Exception as e:
-        st.error(f'❌ Failed to load car data: {e}')
+        st.error(f"❌ Failed to load dataset: {e}")
         st.stop()
 
     def opts(col):
         return sorted(df[col].dropna().unique())
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
+    # Sidebar
     with st.sidebar:
         st.header('About')
         st.write(
-            'This tool uses a tuned **Random Forest** model to estimate the '
+            'This app uses a tuned **Random Forest** model to estimate the '
             'resale price of a used car based on vehicle features.'
         )
-        st.markdown('**Developed by Avijit Jana**')
+        st.markdown('**- Developed by Avijit Jana**')
         try:
             st.image(CAR_IMAGE_PATH, width=250)
         except Exception:
@@ -99,15 +153,12 @@ def main():
                 '- Encoding: LabelEncoder (per column)\n'
             )
 
-        # with st.expander('Dataset Info'):
-        #     st.write(df.shape)
-        #     st.write(df.dtypes)
+    # Header
+    st.header("🚗 CarDekho Price Prediction", divider="red")
 
-    # ── Header ────────────────────────────────────────────────────────────────
-    st.header("🚗 :orange[_CarDekho_] Resale Car Price Prediction 🚗", divider="red")
-    st.write('Fill in the car details below and click **Predict Price**.')
-
-    # ── Input form ────────────────────────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────
+  # Input form 
+  # ────────────────────────────────────────────────────────────
     with st.form('prediction_form'):
         st.subheader('Car Details')
 
@@ -147,8 +198,10 @@ def main():
 
         submitted = st.form_submit_button('🔍 Predict Price', use_container_width=True)
 
-    # ── Prediction ────────────────────────────────────────────────────────────
     if submitted:
+        if km_driven < 0:
+            st.error("Kilometers cannot be negative")
+            st.stop()
         features = {
             'Fuel type'         : fuel,
             'Body type'         : body,
@@ -195,11 +248,8 @@ def main():
                 band = '🔴 Premium segment (> ₹15 Lakh)'
             st.caption(band)
 
-        with st.expander('📋 Input Summary'):
-            st.dataframe(
-                pd.DataFrame([features]).T.rename(columns={0: 'Selected Value'}),
-                use_container_width=True,
-            )
-
-if __name__ == '__main__':
+# ─────────────────────────────────────────────────────────────
+# Main Runner
+# ─────────────────────────────────────────────────────────────
+if __name__ == "__main__":
     main()
