@@ -13,3 +13,11 @@ This repository is a place for learning, sharing, and contributing to the develo
 * Constructive Feedback: When offering feedback or making changes, do so respectfully. Provide constructive criticism that helps others learn and improve.
 * Inclusive Language: Please refrain from using language that is disrespectful, discriminatory, or harmful to any community.
 * Collaborate Openly: The repository is intended for shared growth. Be welcoming to new contributors and supportive of learners.
+
+---
+
+<div align="center">
+
+![Developer](https://img.shields.io/badge/Developed%20By-Avijit_Jana-navy?style=for-the-badge)
+
+</div>

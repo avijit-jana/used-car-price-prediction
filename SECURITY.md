@@ -66,8 +66,10 @@ If you're unsure whether your testing approach is acceptable, contact us before 
 
 Thank you for helping keep this project and its users safe.
 
+---
+
 <div align="center">
 
-![Developer](https://img.shields.io/badge/Developed%20By-Avijit_Jana-blueviolet?style=for-the-badge)
+![Developer](https://img.shields.io/badge/Developed%20By-Avijit_Jana-navy?style=for-the-badge)
 
 </div>

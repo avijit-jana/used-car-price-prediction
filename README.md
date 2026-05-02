@@ -1,6 +1,6 @@
 <div align="center">
 
-# Used Car Price Prediction (CarDekho)
+# 🚗 Used Car Price Prediction
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/avijit-jana/used-car-price-prediction?style=plastic)
 [![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
@@ -11,157 +11,77 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 ![GitHub last commit](https://img.shields.io/github/last-commit/avijit-jana/used-car-price-prediction?color=red\&style=plastic)
 
-End-to-end **used car price prediction** project for estimating **car resale value** using a clean **data preprocessing + feature engineering + regression modeling** workflow in **Python**. Includes an interactive **Streamlit** web app for price inference and reproducible notebooks for **EDA (Exploratory Data Analysis)** and model development.
+**A production-minded machine learning project that estimates resale value of used cars with a clean, reproducible pipeline and interpretable results.**
 
 ![Car](app/car.png)
 
 </div>
 
-## Table of Contents
+## 📌 Executive Summary
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Dataset](#dataset)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Run the Streamlit app](#run-the-streamlit-app)
-  - [Reproduce preprocessing + EDA](#reproduce-preprocessing--eda)
-  - [Reproduce model training](#reproduce-model-training)
-  - [Programmatic prediction (Python)](#programmatic-prediction-python)
-- [Results Summary](#results-summary)
-- [Contributing](#contributing)
-- [License](#license)
+The determination of an equitable resale valuation for motor vehicles necessitates a sophisticated analysis of multi-dimensional variables. Beyond simple age-based depreciation, values are influenced by temporal factors, mechanical utilization (mileage), fuel efficiency standards, and the fluctuating sentiments of prevailing market dynamics.
 
-## Overview
+This repository presents a comprehensive, end-to-end computational pipeline designed to bridge the gap between raw automotive data and high-fidelity price predictions. By leveraging state-of-the-art machine learning algorithms, the framework provides not only numerical accuracy but also deep model interpretability, ensuring that valuation outputs are both precise and justifiable to stakeholders.
 
-This repository demonstrates a practical **machine learning regression** pipeline for **used car resale price prediction**. It covers:
+## ✨ Why This Project Matters
 
-- Multi-city dataset consolidation (Bangalore, Chennai, Delhi, Hyderabad, Jaipur, Kolkata)
-- Robust cleaning of messy/real-world marketplace data (units, missing values, outliers)
-- Feature engineering and encoding of categorical variables
-- Model benchmarking and selection (baseline algorithms -> tuned model)
-- Deployment-ready inference via a **Streamlit price predictor**
+Pricing used cars is inherently noisy—depreciation, mileage, ownership, and market sentiment all interact in non-linear ways. This project demonstrates how to translate that complexity into a **robust regression system** that is:
 
-Data is collected from CarDekho used car listings (see `Others/Info.txt`).
+* **Accurate** – leverages tree-based models for non-linear relationships
+* **Explainable** – focuses on feature importance and model behavior
+* **Reproducible** – clean pipeline from raw data → prediction
 
-## Features
+## 🏗️ Project Architecture
 
-- **Preprocessing**
-  - Dataset merge across cities
-  - Data cleaning (types, units, missing values)
-  - Outlier handling
-  - Persisted preprocessing artifacts (encoders/scalers)
-- **Feature Engineering**
-  - Structured feature extraction from nested fields (flattening to tabular data)
-  - Categorical encoding and numerical scaling for modeling
-  - Feature selection notes and documentation (`Others/Feature Description.pdf`)
-- **Regression Modeling**
-  - Baseline comparison across multiple regressors
-  - Cross-validation and test-set evaluation (MAE / RMSE / R^2)
-  - Hyperparameter tuning for the selected model
-  - Saved model artifact for inference (`Utility Files/model.pkl`)
+```
+Raw Data → Cleaning → Feature Engineering → Model Training → Evaluation → Prediction
+```
 
-## Tech Stack
+Key design goals:
 
-- **Language:** Python
-- **Core:** Pandas, NumPy
-- **ML:** scikit-learn (regression models, preprocessing, CV, metrics)
-- **EDA:** notebooks + visual analysis (Exploratory Data Analysis)
-- **App:** Streamlit
+* Minimal leakage
+* Consistent preprocessing
+* Model comparability
 
 ## Project Structure
 
 ```text
 used-car-price-prediction/
 |-- app/
-|   |-- Price_Prediction.py          # Streamlit app (inference UI)
-|   `-- car.png
-|-- DataSets/                        # Raw city-level datasets (Excel)
-|-- NoteBooks/
-|   |-- Preprocessing & EDA.ipynb     # Data prep + EDA pipeline
-|   `-- Model Development.ipynb       # Baselines, tuning, evaluation, exports
-|-- Utility Files/                   # Processed data + trained artifacts
+|   |-- price_prediction.py        # Streamlit app (inference UI)
+|   |-- car.png
+|
+|-- notebooks/
+|   |-- preprocessing_eda.ipynb    # Data prep + EDA pipeline
+|   |-- model_development.ipynb    # Baselines, tuning, evaluation, exports
+|
+|-- artifacts/                     # Processed data + trained artifacts
 |   |-- car_data.xlsx
 |   |-- encoded_car_data.xlsx
 |   |-- label_encoder.pkl
 |   |-- scaler.pkl
 |   |-- model.pkl
-|   `-- selected_features.txt
+|   |-- selected_features.txt
+|
 |-- requirements.txt
-`-- README.md
+|-- CODE_OF_CONDUCT.md
+|-- CONTRIBUTING.md
+|-- LICENSE
+|-- README.md
 ```
 
-## Dataset
+## 🔬 Exploratory Data Analysis (EDA)
 
-- **Source:** CarDekho used car listings (`Others/Info.txt`)
-- **Raw files:** `DataSets/*.xlsx` (city-wise)
-- **Processed dataset:** `Utility Files/car_data.xlsx`
-- **Encoded dataset used for modeling:** `Utility Files/encoded_car_data.xlsx`
+EDA focuses on uncovering signal and validating assumptions:
 
-From `NoteBooks/Preprocessing & EDA.ipynb`, the city-wise data is concatenated (combined shape reported as **(8369, 6)** in the notebook output) and then flattened/cleaned into a modeling-ready table.
-
-From `NoteBooks/Model Development.ipynb`, the encoded modeling dataset shape is reported as **(7853, 16)** with `price` as the target.
-
-**Target:** `price` (INR)
-
-**Example modeling features** (see the Streamlit app's `FEATURE_ORDER`):
-
-- `Fuel type`, `Body type`, `transmission`, `model`, `variantName`, `Insurance Validity`, `City`
-- `Kilometers driven`, `ownerNo`, `modelYear`, `Registration Year`
-- `Mileage(kmpl)`, `Engine(CC)`, `Max Power(bhp)`, `Torque(Nm)`
-
-## Installation
-
-```bash
-# (optional) create and activate a virtual environment
-python -m venv .venv
-
-# Windows (PowerShell)
-.\.venv\Scripts\Activate.ps1
-
-# macOS/Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Run the Streamlit app
-
-```bash
-streamlit run "app/Price_Prediction.py"
-```
-
-The app loads:
-
-- Trained model: `Utility Files/model.pkl`
-- Preprocessors: `Utility Files/label_encoder.pkl`, `Utility Files/scaler.pkl`
-- Reference data for categories: `Utility Files/car_data.xlsx`
-
-Note: `Utility Files/model.pkl` is a large binary file. If you publish this repository on GitHub, consider using **Git LFS** for model artifacts or attaching them as **Release assets**.
-
-### Reproduce preprocessing     + EDA
-
-Open and run:
-
-- `NoteBooks/Preprocessing & EDA.ipynb`
-
-This notebook demonstrates dataset concatenation, cleaning, missing-value handling, outlier removal, categorical encoding, and EDA.
-
-### Reproduce model training
-
-Open and run:
-
-- `NoteBooks/Model Development.ipynb`
-
-This notebook benchmarks multiple regression algorithms, performs cross-validation, tunes the best model, and exports artifacts used by the app.
+* Distribution of selling price
+* Correlation between price and age/mileage
+* Categorical feature impact (fuel, transmission, seller)
+* Outlier detection 
 
 ## Results Summary
 
-Metrics reported in `NoteBooks/Model Development.ipynb` (test-set comparison):
+Metrics reported in [`NoteBooks/Model Development.ipynb`](NoteBooks/Model%20Development.ipynb) (test-set comparison):
 
 - **Random Forest Regressor:** MAE **89,905**, RMSE **167,212**, R^2 **0.9416**
 - Gradient Boosting Regressor: MAE 114,597, RMSE 202,607, R^2 0.9143
@@ -181,12 +101,12 @@ Note: Exact results can vary if you retrain (different splits, preprocessing cho
 
 Contributions are welcome—especially improvements to data cleaning, feature engineering, model evaluation, and Streamlit UX.
 
-- Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-- For security issues, see [`SECURITY.md`](SECURITY.md).
+- Please read [**`CONTRIBUTING.md`**](CONTRIBUTING.md) and follow [**`CODE_OF_CONDUCT.md`**](CODE_OF_CONDUCT.md).
+- For security issues, see [**`SECURITY.md`**](SECURITY.md).
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [`LICENSE`](LICENSE) for details.
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [**`LICENSE`**](LICENSE) for details.
 
 ---
 
